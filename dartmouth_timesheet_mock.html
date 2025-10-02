@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dartmouth Student Employment</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f8fafc; color: #111; }
+    header { background: #00471B; color: white; padding: 16px; }
+    header h1 { margin: 0; font-size: 20px; }
+    .container { max-width: 1000px; margin: 0 auto; padding: 20px; background: white; }
+    h2 { margin-top: 28px; }
+    .grid { display: grid; grid-auto-flow: row; border: 2px solid #333; }
+    .grid div { border: 1px solid #333; text-align: center; padding: 12px; font-size: 12px; }
+    .time-slot { border: 1px solid #333; cursor: pointer; background: #fff; }
+    .time-slot.active { border: 1px solid #333; background: #4ade80; color: white; }
+    table { border-collapse: collapse; margin-top: 20px; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    tfoot td { font-weight: bold; }
+    .clock-controls { margin-top: 20px; display: flex; gap: 10px; }
+    button { background: #0069d9; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+    button:hover { background: #0056b3; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Dartmouth Student Employment — Time Sheet</h1>
+  </header>
+  <div class="container">
+    <h2>Select Hours</h2>
+    <div id="schedule"></div>
+
+    <div class="clock-controls">
+      <button onclick="clockIn()">Clock In</button>
+      <button onclick="clockOut()">Clock Out</button>
+      <span id="clockStatus">Not clocked in</span>
+    </div>
+
+    <h2>Logged Hours</h2>
+    <table id="hoursTable">
+      <thead>
+        <tr>
+          <th>Day</th>
+          <th>Total Hours</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+      <tfoot>
+        <tr>
+          <td>Total</td>
+          <td id="grandTotal">0</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <script>
+    const startHour = 8;
+    const endHour = 20;
+    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const scheduleDiv = document.getElementById("schedule");
+
+    let clockInTime = null;
+
+    function buildGrid() {
+      let gridHTML = '<div></div>';
+      days.forEach(day => {
+        gridHTML += `<div><strong>${day}</strong></div>`;
+      });
+
+      for (let h = startHour; h < endHour; h++) {
+        gridHTML += `<div><strong>${h}:00</strong></div>`;
+        days.forEach(day => {
+          gridHTML += `<div class="time-slot" data-day="${day}" data-hour="${h}"></div>`;
+        });
+      }
+
+      scheduleDiv.style.display = "grid";
+      scheduleDiv.style.gridTemplateColumns = `80px repeat(${days.length}, 1fr)`;
+      scheduleDiv.innerHTML = gridHTML;
+    }
+
+    buildGrid();
+
+    scheduleDiv.addEventListener("click", e => {
+      if (e.target.classList.contains("time-slot")) {
+        e.target.classList.toggle("active");
+        updateTable();
+      }
+    });
+
+    function updateTable() {
+      const rows = {};
+      document.querySelectorAll(".time-slot.active").forEach(slot => {
+        const day = slot.dataset.day;
+        if (!rows[day]) rows[day] = 0;
+        rows[day] += 1; // 1 hour per slot
+      });
+
+      const tbody = document.querySelector("#hoursTable tbody");
+      tbody.innerHTML = "";
+      let total = 0;
+      for (let day in rows) {
+        total += rows[day];
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${day}</td><td>${rows[day]}</td>`;
+        tbody.appendChild(tr);
+      }
+
+      document.getElementById("grandTotal").textContent = total;
+    }
+
+    function clockIn() {
+      if (clockInTime) {
+        alert("Already clocked in!");
+        return;
+      }
+      clockInTime = new Date();
+      document.getElementById("clockStatus").textContent = `Clocked in at ${clockInTime.toLocaleTimeString()}`;
+    }
+
+    function clockOut() {
+      if (!clockInTime) {
+        alert("Not clocked in!");
+        return;
+      }
+      const clockOutTime = new Date();
+      const hoursWorked = (clockOutTime - clockInTime) / 1000 / 60 / 60;
+
+      const dayIndex = new Date().getDay(); // 0 = Sunday, 6 = Saturday
+      const jsDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      const dayName = jsDays[dayIndex];
+
+      // Highlight corresponding blocks in the grid
+      let hourStart = clockInTime.getHours();
+      let hourEnd = clockOutTime.getHours();
+      for (let h = hourStart; h <= hourEnd; h++) {
+        const slot = document.querySelector(`.time-slot[data-day='${dayName}'][data-hour='${h}']`);
+        if (slot) slot.classList.add("active");
+      }
+
+      updateTable();
+
+      clockInTime = null;
+      document.getElementById("clockStatus").textContent = "Not clocked in";
+    }
+  </script>
+</body>
+</html>
